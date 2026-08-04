@@ -143,9 +143,12 @@ func (s *Scrape) init() {
 		s.scanImpl = scan.NewBaiduPanScanImpl(s.scrapePath, s.BaiduPanClient, s.ctx)
 	}
 	// 确定扫描接口，识别接口，刮削接口，重命名接口
-	if s.scrapePath.MediaType == models.MediaTypeTvShow {
+	switch s.scrapePath.MediaType {
+	case models.MediaTypeTvShow:
 		s.scrapeImpl = NewTvShowScrapeImpl(s.scrapePath, s.ctx, s.V115Client, s.OpenlistClient, s.BaiduPanClient)
-	} else {
+	case models.MediaTypeAuto:
+		s.scrapeImpl = NewAutoScrapeImpl(s.scrapePath, s.ctx, s.V115Client, s.OpenlistClient, s.BaiduPanClient)
+	default:
 		s.scrapeImpl = NewMovieScrapeImpl(s.scrapePath, s.ctx, s.V115Client, s.OpenlistClient, s.BaiduPanClient)
 	}
 }

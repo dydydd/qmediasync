@@ -27,6 +27,7 @@ const (
 	MediaTypeMovie  MediaType = "movie"  // 电影
 	MediaTypeTvShow MediaType = "tvshow" // 剧集
 	MediaTypeOther  MediaType = "other"  // 其他，无法刮削
+	MediaTypeAuto   MediaType = "auto"   // 自动识别，按文件名特征判断每个文件是电影还是剧集
 )
 
 type RenameType string
@@ -369,6 +370,19 @@ func (sp *ScrapePath) MakeScrapeMediaFile(path, pathId, fileName, fileId, pickCo
 		mediaFile.Path = ""
 		mediaFile.PathId = ""
 	}
+	// 自动识别模式：根据文件名特征和目录名逐个判断文件类型
+	if sp.MediaType == MediaTypeAuto {
+		baseDirName := filepath.Base(path)
+		if helpers.IsTvShowFileName(fileName) || helpers.IsSeasonFolderName(baseDirName) {
+			mediaFile.MediaType = MediaTypeTvShow
+			mediaFile.TvshowPath = path
+			mediaFile.TvshowPathId = pathId
+			mediaFile.Path = ""
+			mediaFile.PathId = ""
+		} else {
+			mediaFile.MediaType = MediaTypeMovie
+		}
+	}
 	return mediaFile
 }
 
@@ -409,6 +423,7 @@ func (sp *ScrapePath) GetDownloadUrl(videoPathOrUrl string) string {
 
 // 给刮削目录生成二级目录文件夹
 // 先检查是否有对应的数据库纪录,然后比对目录分类和分类列表的差异,没有的创建,删除的删除,改名的改名
+// auto模式会同时生成电影和剧集两套分类目录
 func (sp *ScrapePath) GenerateCategory() {
 	if !sp.EnableCategory {
 		helpers.AppLogger.Infof("刮削目录 %s 未启用二级分类", sp.SourcePath)
@@ -423,13 +438,17 @@ func (sp *ScrapePath) GenerateCategory() {
 		CategoryId uint   `json:"category_id"`
 	}
 	sp.Category = ScrapePathCategoryCollection{}
+	// 所有合法的分类ID集合，用于判断需要删除的数据库记录（auto模式为电影+剧集分类的并集）
+	validCategoryIds := make(map[uint]bool)
 	added := make([]categoryTmp, 0)
 	deleted := make([]*ScrapePathCategory, 0)
 	spCList := make([]*ScrapePathCategory, 0)
-	if sp.MediaType == MediaTypeMovie {
+	// 收集电影分类
+	if sp.MediaType == MediaTypeMovie || sp.MediaType == MediaTypeAuto {
 		categories := GetMovieCategory()
 		sp.Category.MovieCategory = categories
 		for _, category := range categories {
+			validCategoryIds[category.ID] = true
 			// 检查数据库是否有对应的纪录
 			exists := false
 			var existsScrapeCategory *ScrapePathCategory
@@ -454,36 +473,24 @@ func (sp *ScrapePath) GenerateCategory() {
 				}
 			}
 		}
-		// scrapePathCategory有categories没有的加入删除
-		for _, scrapteCategory := range scrapePathCategory {
-			exists := false
-			for _, category := range categories {
-				if scrapteCategory.CategoryId == category.ID {
-					exists = true
-					break
-				}
-			}
-			if !exists {
-				deleted = append(deleted, scrapteCategory)
-			} else {
-				spCList = append(spCList, scrapteCategory)
-			}
-		}
-	} else if sp.MediaType == MediaTypeTvShow {
+	}
+	// 收集剧集分类
+	if sp.MediaType == MediaTypeTvShow || sp.MediaType == MediaTypeAuto {
 		categories := GetTvshowCategory()
 		sp.Category.TvShowCategory = categories
 		for _, category := range categories {
+			validCategoryIds[category.ID] = true
 			// 检查数据库是否有对应的纪录
 			exists := false
 			var existsScrapeCategory *ScrapePathCategory
-		dbloop:
+		tvloop:
 			for _, dbCategory := range scrapePathCategory {
 				if dbCategory.CategoryId == category.ID {
 					if dbCategory.FileId == "" {
-						existsScrapeCategory = dbCategory
 						helpers.AppLogger.Infof("二级分类 %s 已存在数据库记录，但是没有创建目标路径，ID=%d", category.Name, category.ID)
+						existsScrapeCategory = dbCategory
 						exists = false
-						break dbloop
+						break tvloop
 					}
 					exists = true
 				}
@@ -497,19 +504,13 @@ func (sp *ScrapePath) GenerateCategory() {
 				}
 			}
 		}
-		for _, scrapteCategory := range scrapePathCategory {
-			exists := false
-			for _, category := range categories {
-				if scrapteCategory.CategoryId == category.ID {
-					exists = true
-					break
-				}
-			}
-			if !exists {
-				deleted = append(deleted, scrapteCategory)
-			} else {
-				spCList = append(spCList, scrapteCategory)
-			}
+	}
+	// scrapePathCategory有categories没有的加入删除
+	for _, scrapteCategory := range scrapePathCategory {
+		if !validCategoryIds[scrapteCategory.CategoryId] {
+			deleted = append(deleted, scrapteCategory)
+		} else {
+			spCList = append(spCList, scrapteCategory)
 		}
 	}
 	// 处理添加

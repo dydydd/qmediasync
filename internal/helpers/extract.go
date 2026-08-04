@@ -690,6 +690,35 @@ func ExtractSeasonFromTvshowPath(text string) int {
 	return -1
 }
 
+// IsTvShowFileName 根据文件名特征判断是否为电视剧（剧集），用于自动识别媒体类型
+// 仅使用明确的剧集标记，避免将电影误判为电视剧
+func IsTvShowFileName(name string) bool {
+	patterns := []string{
+		`(?i)S\d{1,2}E[P]?\d{1,3}`,         // S01E01、S01EP01
+		`(?i)\bEP?\d{2,3}\b`,               // EP01、E01（至少两位数字，避免误判年份等）
+		`(?i)Season\s*\d+\s*Episode\s*\d+`, // Season 1 Episode 1
+		`(?i)\b\d{1,2}x\d{1,3}\b`,          // 1x01
+		`第\s*\d+\s*[季集話话]`,                 // 第1季、第1集、第1話
+	}
+	for _, pattern := range patterns {
+		if regexp.MustCompile(pattern).MatchString(name) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsSeasonFolderName 判断目录名是否为季目录，例如 Season 1、S01
+func IsSeasonFolderName(name string) bool {
+	if regexp.MustCompile(`(?i)^Season\s*\d+$`).MatchString(name) {
+		return true
+	}
+	if regexp.MustCompile(`(?i)^S\d{1,2}$`).MatchString(name) {
+		return true
+	}
+	return false
+}
+
 // 清理标题
 func cleanTitle(title string) string {
 	title = strings.TrimSpace(title)

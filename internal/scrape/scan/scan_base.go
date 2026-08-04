@@ -224,11 +224,10 @@ videoloop:
 			jsonStr, _ := json.Marshal(imageList)
 			mediaFile.ImageFilesJson = string(jsonStr)
 		}
-		// 如果时电视剧，加入批次号
-		if s.scrapePath.MediaType == models.MediaTypeTvShow {
+		// 电视剧需要加入批次号并提取季和集序号
+		if s.scrapePath.MediaType == models.MediaTypeTvShow || (s.scrapePath.MediaType == models.MediaTypeAuto && mediaFile.MediaType == models.MediaTypeTvShow) {
 			mediaFile.BatchNo = s.BatchNo
 			// 识别季和集序号
-			// 提取季和集
 			// 填充电视剧和季目录（如果有季的话）
 			if err := mediaFile.ExtractSeasonEpisode(s.scrapePath); err != nil {
 				helpers.AppLogger.Errorf("提取季和集序号失败, 文件名: %s, 季 %d 集 %d 失败原因: %v", mediaFile.VideoFilename, mediaFile.SeasonNumber, mediaFile.EpisodeNumber, err)

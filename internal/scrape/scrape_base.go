@@ -32,6 +32,8 @@ type ScrapeBase struct {
 	v115Client     *v115open.OpenClient
 	openlistClient *openlist.Client
 	baiduPanClient *baidupan.Client
+	// 当前实现处理的媒体类型，auto模式下目录类型是auto，这里保存实际处理的具体类型
+	mediaType models.MediaType
 }
 
 // 下载图片到指定文件

@@ -42,6 +42,7 @@ func NewTvShowScrapeImpl(scrapePath *models.ScrapePath, ctx context.Context, v11
 			v115Client:     v115Client,
 			baiduPanClient: baiduPanClient,
 			openlistClient: openlistClient,
+			mediaType:      models.MediaTypeTvShow,
 		},
 	}
 }
@@ -49,7 +50,7 @@ func NewTvShowScrapeImpl(scrapePath *models.ScrapePath, ctx context.Context, v11
 // 先处理电视剧：用PathId分组，每组取第一条，识别完后更新同步批次同PathId的所有记录的tmdbid，name, year，然后将这些ID放入待处理队列
 func (t *tvShowScrapeImpl) Start() error {
 	// 查询数据库中所有待刮削和待整理的记录总数来决定要启动的工作协程数量
-	total := models.GetScannedScrapeMediaFilesTotal(t.scrapePath.ID, t.scrapePath.MediaType)
+	total := models.GetScannedScrapeMediaFilesTotal(t.scrapePath.ID, t.mediaType)
 	if total == 0 {
 		helpers.AppLogger.Infof("没有待刮削和待整理的记录，无需启动刮削任务")
 		return nil
@@ -105,7 +106,7 @@ mainloop:
 		}
 		// 从数据库取数据
 		// 扫描阶段已经提取了季和集的序号，这里获取到的是用剧分组的所有数据，需要处理成剧->季的形式
-		mediaFiles := models.GetScannedScrapeMediaFilesGroupByTvshowPathId(t.scrapePath.ID, t.scrapePath.GetMaxThreads()*2)
+		mediaFiles := models.GetScannedScrapeMediaFilesGroupByTvshowPathId(t.scrapePath.ID, t.mediaType, t.scrapePath.GetMaxThreads()*2)
 		if len(mediaFiles) == 0 {
 			helpers.AppLogger.Infof("所有待刮削和待整理记录都已加入处理队列，关闭队列通道，等待执行完成")
 			break mainloop

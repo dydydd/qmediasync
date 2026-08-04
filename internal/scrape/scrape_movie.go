@@ -38,6 +38,7 @@ func NewMovieScrapeImpl(scrapePath *models.ScrapePath, ctx context.Context, v115
 			v115Client:     v115Client,
 			openlistClient: openlistClient,
 			baiduPanClient: baiduPanClient,
+			mediaType:      models.MediaTypeMovie,
 		},
 	}
 }
@@ -49,7 +50,7 @@ func (m *movieScrapeImpl) Start() error {
 	wg := &sync.WaitGroup{}
 	max := m.scrapePath.GetMaxThreads()
 	// 查询数据库中所有待刮削和待整理的记录总数来决定要启动的工作协程数量
-	total := models.GetScannedScrapeMediaFilesTotal(m.scrapePath.ID, m.scrapePath.MediaType)
+	total := models.GetScannedScrapeMediaFilesTotal(m.scrapePath.ID, m.mediaType)
 	if total == 0 {
 		helpers.AppLogger.Infof("没有待刮削和待整理的记录，无需启动刮削任务")
 		return nil
@@ -66,7 +67,7 @@ mainloop:
 			break mainloop
 		default:
 			// 从数据库取数据
-			mediaFiles := models.GetScannedScrapeMediaFiles(m.scrapePath.ID, m.scrapePath.MediaType, m.scrapePath.GetMaxThreads()*2)
+			mediaFiles := models.GetScannedScrapeMediaFiles(m.scrapePath.ID, m.mediaType, m.scrapePath.GetMaxThreads()*2)
 			if len(mediaFiles) == 0 {
 				helpers.AppLogger.Infof("所有待刮削和待整理记录都已加入处理队列，关闭队列通道，等待执行完成")
 				close(m.fileTasks)

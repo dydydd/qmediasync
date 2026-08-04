@@ -1256,8 +1256,16 @@ func GetScannedScrapeMediaFilesTotal(scrapePathId uint, mediaType MediaType) int
 	return total
 }
 
+// 查询刮削目录下所有待刮削或者待整理的记录总数，auto模式会统计电影和剧集两类
+func GetScannedScrapeMediaFilesTotalByPath(scrapePath *ScrapePath) int64 {
+	if scrapePath.MediaType == MediaTypeAuto {
+		return GetScannedScrapeMediaFilesTotal(scrapePath.ID, MediaTypeMovie) + GetScannedScrapeMediaFilesTotal(scrapePath.ID, MediaTypeTvShow)
+	}
+	return GetScannedScrapeMediaFilesTotal(scrapePath.ID, scrapePath.MediaType)
+}
+
 // 电视剧刮削使用，按照path_id分组返回（分页查询优化版）
-func GetScannedScrapeMediaFilesGroupByTvshowPathId(scrapePathId uint, limit int) []*ScrapeMediaFile {
+func GetScannedScrapeMediaFilesGroupByTvshowPathId(scrapePathId uint, mediaType MediaType, limit int) []*ScrapeMediaFile {
 	// 使用分页查询，每次处理1000条记录，避免内存溢出
 	const pageSize = 1000
 	var page = 1
@@ -1268,7 +1276,7 @@ func GetScannedScrapeMediaFilesGroupByTvshowPathId(scrapePathId uint, limit int)
 		var pageFiles []*ScrapeMediaFile
 		currentOffset := (page - 1) * pageSize
 		// 查询当前页的数据
-		if err := db.Db.Where("scrape_path_id = ? AND status IN ?", scrapePathId, []ScrapeMediaStatus{ScrapeMediaStatusScanned, ScrapeMediaStatusScraped}).
+		if err := db.Db.Where("scrape_path_id = ? AND status IN ? AND media_type = ?", scrapePathId, []ScrapeMediaStatus{ScrapeMediaStatusScanned, ScrapeMediaStatusScraped}, mediaType).
 			Order("id asc").
 			Limit(pageSize).
 			Offset(currentOffset).

@@ -367,7 +367,7 @@ func runStrmThenScrape(extractedIDs []uint) string {
 				// 检查所有刮削目录是否有新文件
 				allScrapePaths := models.GetScrapePathes("")
 				for _, scrapePath := range allScrapePaths {
-					newScrapeFilesCount := models.GetScannedScrapeMediaFilesTotal(scrapePath.ID, scrapePath.MediaType)
+					newScrapeFilesCount := models.GetScannedScrapeMediaFilesTotalByPath(scrapePath)
 					if newScrapeFilesCount > 0 {
 						hasNewScrapeFiles = true
 						break
@@ -378,7 +378,7 @@ func runStrmThenScrape(extractedIDs []uint) string {
 				taskID := extractedIDs[1]
 				scrapePath := models.GetScrapePathByID(taskID)
 				if scrapePath != nil {
-					newScrapeFilesCount := models.GetScannedScrapeMediaFilesTotal(scrapePath.ID, scrapePath.MediaType)
+					newScrapeFilesCount := models.GetScannedScrapeMediaFilesTotalByPath(scrapePath)
 					if newScrapeFilesCount > 0 {
 						hasNewScrapeFiles = true
 					}

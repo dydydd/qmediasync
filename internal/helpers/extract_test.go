@@ -1770,3 +1770,58 @@ func TestExtractMediaInfoRe_Tmdb(t *testing.T) {
 		}
 	}
 }
+
+func TestIsTvShowFileName(t *testing.T) {
+	testCases := []struct {
+		name     string
+		filename string
+		expected bool
+	}{
+		{name: "S01E01格式", filename: "Breaking.Bad.S01E01.1080p.mkv", expected: true},
+		{name: "S01EP01格式", filename: "Show.S01EP01.mkv", expected: true},
+		{name: "EP01格式", filename: "Show.EP01.mkv", expected: true},
+		{name: "E01格式", filename: "Show.E01.mkv", expected: true},
+		{name: "Season1Episode1格式", filename: "Show.Season 1 Episode 1.mkv", expected: true},
+		{name: "1x01格式", filename: "Show.1x01.mkv", expected: true},
+		{name: "中文第X集格式", filename: "凡人修仙传.第10集.mkv", expected: true},
+		{name: "中文第X季格式", filename: "琅琊榜.第2季.第1集.mkv", expected: true},
+		{name: "电影-年份", filename: "Inception.2010.1080p.BluRay.mkv", expected: false},
+		{name: "电影-名称", filename: "The Godfather.mkv", expected: false},
+		{name: "电影-带点", filename: "Wall.E.2008.mkv", expected: false},
+		{name: "电影-纯数字年份", filename: "2012.mkv", expected: false},
+		{name: "电影-中文", filename: "流浪地球 (2019).mkv", expected: false},
+		{name: "电影-带副标题", filename: "Fight.Club.1999.720p.mkv", expected: false},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := IsTvShowFileName(tc.filename)
+			if got != tc.expected {
+				t.Errorf("IsTvShowFileName(%q) = %v，预期 %v", tc.filename, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestIsSeasonFolderName(t *testing.T) {
+	testCases := []struct {
+		name     string
+		folder   string
+		expected bool
+	}{
+		{name: "Season1", folder: "Season 1", expected: true},
+		{name: "Season2", folder: "Season 2", expected: true},
+		{name: "S01", folder: "S01", expected: true},
+		{name: "小写s01", folder: "s02", expected: true},
+		{name: "电影目录", folder: "Inception 2010", expected: false},
+		{name: "剧集目录", folder: "Breaking Bad", expected: false},
+		{name: "带年份目录", folder: "Show 2023", expected: false},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := IsSeasonFolderName(tc.folder)
+			if got != tc.expected {
+				t.Errorf("IsSeasonFolderName(%q) = %v，预期 %v", tc.folder, got, tc.expected)
+			}
+		})
+	}
+}
